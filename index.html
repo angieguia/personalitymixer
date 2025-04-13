@@ -1,0 +1,76 @@
+<!--Background and basic code from https://codepen.io/stack-findover/pen/eYWPwPV-->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Personality Mixer</title>
+    <style>
+        body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 40px;
+    background: url(https://i.ibb.co/87GbbFP/2799006.jpg) no-repeat;
+    background-size: cover;
+    animation: gradient 3s ease infinite;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+@keyframes gradient {
+    0% { 
+        background-position: 0% 0%; 
+    }
+    100% { 
+        background-position: 100% 50%; 
+    }
+}
+body {
+    background-attachment: fixed;
+}
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="submit"] {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #23d5ab;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #23a6d5;
+        }
+    </style>
+</head>
+<body>
+    <form action="/index" method="post">
+        <h1>Personality Mixer</h1>
+        <h2>Generates a custom spotify playlist based on your results!</h2>
+        {% for i in range(questions|length) %}
+            <p><strong>{{ questions[i] }}</strong></p>
+            {% for option in options[i] %}
+                <label>
+                    <input type="radio" name="q{{ i }}" value="{{ option }}" required>
+                    {{ option }}
+                </label>
+            {% endfor %}
+            <br>
+        {% endfor %}
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
