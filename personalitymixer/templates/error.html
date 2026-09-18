@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Something went wrong - Personality Mixer{% endblock %}
+
+{% block head %}
+    <style>
+        .result { text-align: center; }
+        .result h1 { font-size: clamp(1.8rem, 7vw, 2.6rem); margin-bottom: 12px; }
+        .result .lede { margin: 0 auto 28px; }
+        .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <section class="panel result">
+        <h1>{{ title or "Something went wrong" }}</h1>
+        <p class="lede">{{ message }}</p>
+        <div class="result-actions">
+            <a class="btn primary" href="{{ retry_url or '/index' }}">{{ retry_label or "Try again" }}</a>
+        </div>
+    </section>
+{% endblock %}

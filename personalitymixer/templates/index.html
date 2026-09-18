@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Personality Mixer{% endblock %}
+
+{% block head %}
+    <style>
+        /* ---------- Constellation progress ---------- */
+
+        .constellation {
+            display: flex;
+            align-items: center;
+            margin: 0 0 24px;
+        }
+
+        .link {
+            flex: 1;
+            height: 1px;
+            min-width: 6px;
+            background: rgba(190, 185, 255, 0.2);
+            position: relative;
+        }
+        .link::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, var(--star), var(--mint));
+            box-shadow: 0 0 8px rgba(35, 213, 171, 0.7);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.5s ease;
+        }
+        .link.lit::after { transform: scaleX(1); }
+
+        .node {
+            position: relative;
+            flex: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 0;
+            background: none;
+            cursor: pointer;
+        }
+        .node:disabled { cursor: default; }
+        .node::before {
+            content: "";
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 244, 220, 0.55) 0%, transparent 65%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .node::after {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            background: rgba(190, 185, 255, 0.35);
+            clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        .node.done::before { opacity: 1; }
+        .node.done::after { background: var(--star); }
+        .node.current::after { background: var(--mint); transform: scale(1.5); }
+        .node.current::before {
+            opacity: 1;
+            background: radial-gradient(circle, rgba(35, 213, 171, 0.5) 0%, transparent 65%);
+        }
+        .node:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 50%; }
+
+        /* ---------- Questions ---------- */
+
+        .step-count {
+            margin: 0 0 6px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        fieldset.step {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            min-width: 0;
+        }
+        fieldset.step[hidden] { display: none; }
+        fieldset.step:not([hidden]) { animation: step-in 0.35s ease both; }
+
+        @keyframes step-in {
+            from { opacity: 0; transform: translateX(14px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        legend {
+            padding: 0;
+            margin: 0 0 18px;
+            font-size: clamp(1.4rem, 5vw, 1.75rem);
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.015em;
+        }
+        legend:focus { outline: none; }
+
+        .choices {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .choice { display: block; position: relative; cursor: pointer; }
+
+        .choice input {
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+        }
+
+        .choice span {
+            display: flex;
+            align-items: center;
+            min-height: 64px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 1rem;
+            line-height: 1.3;
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .choice:hover span {
+            border-color: rgba(35, 213, 171, 0.55);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .choice input:checked + span {
+            border-color: var(--mint);
+            background: rgba(35, 213, 171, 0.14);
+            box-shadow: 0 0 0 1px var(--mint), 0 0 26px rgba(35, 213, 171, 0.25);
+        }
+
+        .choice input:focus-visible + span {
+            outline: 2px solid var(--star);
+            outline-offset: 2px;
+        }
+
+        /* Without JavaScript every question shows at once, so lay them out plainly */
+        html:not(.js) fieldset.step { margin-bottom: 32px; }
+        html:not(.js) .constellation,
+        html:not(.js) .step-count,
+        html:not(.js) #next,
+        html:not(.js) #back { display: none; }
+
+        @media (max-width: 520px) {
+            .choices { grid-template-columns: 1fr; }
+            .choice span { min-height: 56px; }
+            .node { width: 22px; height: 22px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            fieldset.step:not([hidden]) { animation: none; }
+            .link::after, .node::before, .node::after, .choice span { transition: none; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+        <header>
+            <h1>Personality Mixer</h1>
+            <p class="lede">Answer {{ questions|length }} quick questions and we'll build a Spotify playlist that fits you.</p>
+        </header>
+
+        <form id="quiz" class="panel" action="/index" method="post">
+            {% if error %}
+                <p class="error" role="alert">{{ error }}</p>
+            {% endif %}
+
+            <nav class="constellation" aria-label="Quiz progress">
+                {% for i in range(questions|length) %}
+                    <button type="button" class="node" data-go="{{ i }}" aria-label="Go to question {{ i + 1 }}"></button>
+                    {% if not loop.last %}<span class="link"></span>{% endif %}
+                {% endfor %}
+            </nav>
+
+            <p class="step-count" id="step-count" aria-live="polite"></p>
+
+            {% for i in range(questions|length) %}
+                <fieldset class="step">
+                    <legend tabindex="-1">{{ questions[i]|trim }}</legend>
+                    <div class="choices">
+                        {% for option in options[i] %}
+                            <label class="choice">
+                                <input type="radio" name="q{{ i }}" value="{{ option }}" required>
+                                <span>{{ option }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+            {% endfor %}
+
+            <div class="actions">
+                <button type="button" class="btn ghost" id="back" hidden>Back</button>
+                <span class="spacer"></span>
+                <button type="button" class="btn primary" id="next" disabled>Next</button>
+                <button type="submit" class="btn primary" id="submit">Create my playlist</button>
+            </div>
+        </form>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+    /* ---------- One question at a time ---------- */
+    (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+
+        var form = document.getElementById('quiz');
+        var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
+        var nodes = Array.prototype.slice.call(form.querySelectorAll('.node'));
+        var links = Array.prototype.slice.call(form.querySelectorAll('.link'));
+        var count = document.getElementById('step-count');
+        var backBtn = document.getElementById('back');
+        var nextBtn = document.getElementById('next');
+        var submitBtn = document.getElementById('submit');
+        var current = 0;
+        var timer;
+
+        function answered(k) {
+            return !!steps[k].querySelector('input:checked');
+        }
+
+        function firstOpen() {
+            for (var k = 0; k < steps.length; k++) if (!answered(k)) return k;
+            return steps.length - 1;
+        }
+
+        function render(moveFocus) {
+            var open = firstOpen();
+            var last = current === steps.length - 1;
+
+            steps.forEach(function (s, k) { s.hidden = k !== current; });
+            nodes.forEach(function (n, k) {
+                n.classList.toggle('done', answered(k));
+                n.classList.toggle('current', k === current);
+                n.disabled = k > open;
+                if (k === current) n.setAttribute('aria-current', 'step');
+                else n.removeAttribute('aria-current');
+            });
+            links.forEach(function (l, k) { l.classList.toggle('lit', answered(k)); });
+
+            count.textContent = 'Question ' + (current + 1) + ' of ' + steps.length;
+            backBtn.hidden = current === 0;
+            nextBtn.hidden = last;
+            nextBtn.disabled = !answered(current);
+            submitBtn.hidden = !last;
+            submitBtn.disabled = !form.checkValidity();
+
+            if (moveFocus) steps[current].querySelector('legend').focus({ preventScroll: true });
+        }
+
+        function go(k, moveFocus) {
+            clearTimeout(timer);
+            current = Math.max(0, Math.min(steps.length - 1, k));
+            render(moveFocus);
+        }
+
+        /* Clicking or tapping an answer moves on by itself. Keyboard users
+           (arrow keys also fire a click) use the Next button instead. */
+        var usingPointer = false;
+        form.addEventListener('pointerdown', function () { usingPointer = true; }, true);
+        form.addEventListener('keydown', function () { usingPointer = false; }, true);
+
+        form.addEventListener('click', function (e) {
+            var input = e.target;
+            if (!input.matches || !input.matches('input[type="radio"]')) return;
+            render(false);
+            if (usingPointer && current < steps.length - 1) {
+                clearTimeout(timer);
+                var from = current;
+                timer = setTimeout(function () {
+                    if (current === from) go(from + 1, true);
+                }, 380);
+            }
+        });
+
+        form.addEventListener('change', function (e) {
+            if (e.target.matches && e.target.matches('input[type="radio"]')) render(false);
+        });
+
+        nodes.forEach(function (n) {
+            n.addEventListener('click', function () { go(parseInt(n.dataset.go, 10), true); });
+        });
+        backBtn.addEventListener('click', function () { go(current - 1, true); });
+        nextBtn.addEventListener('click', function () { go(current + 1, true); });
+
+        form.addEventListener('submit', function () {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Building your playlist…';
+            backBtn.disabled = true;
+        });
+
+        /* Coming back via the browser's Back button: undo the "Building…" state */
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            submitBtn.textContent = 'Create my playlist';
+            backBtn.disabled = false;
+            render(false);
+        });
+
+        render(false);
+    })();
+    </script>
+{% endblock %}

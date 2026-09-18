@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Your playlist - Personality Mixer{% endblock %}
+
+{% block head %}
+    <style>
+        .result { text-align: center; }
+        .result h1 { font-size: clamp(1.9rem, 7vw, 2.7rem); margin-bottom: 12px; }
+        .result .lede { margin: 0 auto 28px; }
+        .embed {
+            width: 100%;
+            height: 352px;
+            border: 0;
+            border-radius: 14px;
+            margin-bottom: 26px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .result-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <section class="panel result">
+        <h1>Your playlist is ready</h1>
+        <p class="lede">{{ blurb }}</p>
+
+        {% if playlist_id %}
+            <iframe class="embed"
+                    title="Your Personality Mixer playlist"
+                    src="https://open.spotify.com/embed/playlist/{{ playlist_id }}"
+                    allow="encrypted-media; clipboard-write"
+                    loading="lazy"></iframe>
+        {% endif %}
+
+        <div class="result-actions">
+            <a class="btn primary" href="{{ playlist_link }}" target="_blank" rel="noopener">Open in Spotify</a>
+            <a class="btn ghost" href="/index">Take the quiz again</a>
+        </div>
+    </section>
+{% endblock %}
